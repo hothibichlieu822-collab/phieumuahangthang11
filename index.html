@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kho Phiếu Mua Hàng - ĐM Tân Túc (939)</title>
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --gray: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 16px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; }
+    h1 { font-size: 22px; color: var(--primary-dark); margin-bottom: 4px; }
+    .subtitle { font-size: 14px; color: var(--text-muted); }
+
+    .controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
+    @media (min-width: 640px) {
+      .controls { grid-template-columns: 2fr 1fr; }
+    }
+    input, select {
+      width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px;
+      font-size: 15px; outline: none; background: #fff;
+    }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(2,132,199,0.2); }
+
+    .filter-options { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 14px; color: var(--text-muted); }
+    .filter-options input { width: auto; cursor: pointer; }
+
+    .counter { font-size: 14px; color: var(--text-muted); margin-bottom: 14px; font-weight: 500; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 640px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .card {
+      background: var(--card-bg); border-radius: 12px; padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #e2e8f0;
+      display: flex; flex-direction: column; justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+    .card.is-used { opacity: 0.65; background: #f8fafc; border-color: #cbd5e1; }
+
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .badge {
+      display: inline-block; padding: 4px 10px; border-radius: 999px;
+      background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 600;
+    }
+    .status-pill {
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+    }
+    .status-unused { background: #dcfce7; color: #15803d; }
+    .status-used { background: #fee2e2; color: var(--danger); }
+
+    .title { font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 8px; color: #0f172a; }
+    .expiry { font-size: 13px; color: #d97706; margin-bottom: 14px; font-weight: 500; }
+
+    .code-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f1f5f9; padding: 8px 12px; border-radius: 8px; border: 1px dashed #94a3b8;
+      margin-bottom: 10px;
+    }
+    .code-text { font-family: monospace; font-size: 18px; font-weight: 700; color: #b91c1c; letter-spacing: 1px; }
+
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    button {
+      border: none; padding: 9px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: 0.2s; text-align: center;
+    }
+    .btn-copy { background: var(--primary); color: #fff; }
+    .btn-copy:hover { background: var(--primary-dark); }
+    .btn-copy.copied { background: var(--success); }
+
+    .btn-use { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
+    .btn-use:hover { background: #fca5a5; }
+    .btn-use:disabled { background: #e2e8f0; color: var(--gray); border-color: #cbd5e1; cursor: not-allowed; }
+
+    .loading, .empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 15px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Phiếu Mua Hàng - ĐM Tân Túc (939)</h1>
+    <div class="subtitle">Tra cứu và cập nhật trạng thái phiếu mua hàng trực tiếp về Google Sheets</div>
+  </header>
+
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="Tìm theo tên máy, phân khúc hoặc mã phiếu..." oninput="filterData()">
+    <select id="categorySelect" onchange="filterData()">
+      <option value="">Tất cả nhóm hàng</option>
+    </select>
+  </div>
+
+  <div class="filter-options">
+    <label>
+      <input type="checkbox" id="hideUsedCheckbox" onchange="filterData()"> Chỉ hiển thị phiếu chưa sử dụng
+    </label>
+  </div>
+
+  <div class="counter" id="counter">Đang tải danh sách phiếu...</div>
+  <div id="voucherList" class="loading">Đang kết nối Google Sheets...</div>
+</div>
+
+<script>
+  // Dán URL Web App của bạn vào đây:
+  const API_URL = "https://script.google.com/macros/s/AKfycbzmgBrNjBP-xgMMrLocG7bqCGOV5BYLuq4akMgPQa5e9cBsCOfyMn0wE4ptjhaPWiE6/exec";
+  let allVouchers = [];
+
+  async function loadData() {
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+
+      if (data.success) {
+        allVouchers = data.data;
+
+        const select = document.getElementById("categorySelect");
+        data.categories.forEach(cat => {
+          const opt = document.createElement("option");
+          opt.value = cat;
+          opt.innerText = cat;
+          select.appendChild(opt);
+        });
+
+        renderList(allVouchers);
+      } else {
+        document.getElementById("voucherList").innerHTML = `<div class="empty">${data.message}</div>`;
+      }
+    } catch (err) {
+      document.getElementById("voucherList").innerHTML = `<div class="empty">Lỗi kết nối dữ liệu: ${err.message}</div>`;
+    }
+  }
+
+  function renderList(list) {
+    const container = document.getElementById("voucherList");
+    const counter = document.getElementById("counter");
+
+    counter.innerText = `Tìm thấy ${list.length} phiếu mua hàng phù hợp`;
+
+    if (list.length === 0) {
+      container.className = "";
+      container.innerHTML = `<div class="empty">Không tìm thấy phiếu mua hàng nào phù hợp.</div>`;
+      return;
+    }
+
+    container.className = "grid";
+    container.innerHTML = list.map(item => {
+      const isUsed = item.trangThai && item.trangThai.startsWith("Đã dùng");
+      return `
+        <div class="card ${isUsed ? 'is-used' : ''}">
+          <div>
+            <div class="card-top">
+              <span class="badge">${item.nhomNh}</span>
+              <span class="status-pill ${isUsed ? 'status-used' : 'status-unused'}">
+                ${item.trangThai || 'Chưa sử dụng'}
+              </span>
+            </div>
+            <div class="title">${item.tenPmh}</div>
+            <div class="expiry">Hạn dùng: ${item.hsd}</div>
+          </div>
+
+          <div>
+            <div class="code-row">
+              <span class="code-text">${item.codePmh}</span>
+            </div>
+            <div class="actions">
+              <button class="btn-copy" onclick="copyCode('${item.codePmh}', this)">Sao chép</button>
+              <button 
+                class="btn-use" 
+                onclick="markAsUsed('${item.codePmh}', this)" 
+                ${isUsed ? 'disabled' : ''}>
+                ${isUsed ? 'Đã dùng' : 'Đã dùng'}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function filterData() {
+    const search = document.getElementById("searchInput").value.toLowerCase().trim();
+    const cat = document.getElementById("categorySelect").value;
+    const hideUsed = document.getElementById("hideUsedCheckbox").checked;
+
+    const filtered = allVouchers.filter(item => {
+      const matchSearch = item.tenPmh.toLowerCase().includes(search) || 
+                          item.codePmh.toLowerCase().includes(search);
+      const matchCat = cat === "" || item.nhomNh === cat;
+      const isUsed = item.trangThai && item.trangThai.startsWith("Đã dùng");
+      const matchStatus = !hideUsed || !isUsed;
+
+      return matchSearch && matchCat && matchStatus;
+    });
+
+    renderList(filtered);
+  }
+
+  function copyCode(code, btn) {
+    navigator.clipboard.writeText(code).then(() => {
+      const originalText = btn.innerText;
+      btn.innerText = "Đã chép!";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.innerText = originalText;
+        btn.classList.remove("copied");
+      }, 1500);
+    });
+  }
+
+  // HÀM GHI NHẬN TRẠNG THÁI VỀ GOOGLE SHEETS
+  async function markAsUsed(code, btn) {
+    if (!confirm(`Xác nhận đánh dấu mã phiếu "${code}" đã sử dụng?`)) {
+      return;
+    }
+
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "Đang lưu...";
+
+    try {
+      // Dùng Content-Type: text/plain để tránh lỗi CORS preflight trên Apps Script
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify({ code: code })
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        // Cập nhật dữ liệu tại chỗ để người dùng thấy thay đổi ngay lập tức
+        const item = allVouchers.find(v => v.codePmh === code);
+        if (item) {
+          item.trangThai = result.trangThai;
+        }
+        filterData();
+      } else {
+        alert("Lỗi: " + result.message);
+        btn.disabled = false;
+        btn.innerText = originalText;
+      }
+    } catch (err) {
+      alert("Không thể cập nhật về Google Sheet: " + err.message);
+      btn.disabled = false;
+      btn.innerText = originalText;
+    }
+  }
+
+  window.onload = loadData;
+</script>
+</body>
+</html>
