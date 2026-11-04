@@ -23,10 +23,10 @@
     h1 { font-size: 22px; color: var(--primary-dark); margin-bottom: 4px; }
     .subtitle { font-size: 14px; color: var(--text-muted); }
 
-    /* Thanh tìm kiếm và bộ lọc dropdown */
+    /* Thanh tìm kiếm và bộ lọc đa cấp */
     .controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
     @media (min-width: 640px) {
-      .controls { grid-template-columns: 1.6fr 1fr 1.2fr; }
+      .controls { grid-template-columns: 1.2fr 1fr 1.6fr; }
     }
     input, select {
       width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px;
@@ -89,16 +89,18 @@
     <div class="subtitle">Tra cứu nhanh và lấy mã PMH khả dụng tháng 11</div>
   </header>
 
-  <!-- BỘ LỌC CHÍNH -->
+  <!-- BỘ LỌC PHÂN CẤP -->
   <div class="controls">
     <input type="text" id="searchInput" placeholder="Tìm theo tên máy, mã phiếu..." oninput="filterData()">
     
-    <select id="categorySelect" onchange="filterData()">
-      <option value="">Tất cả nhóm hàng</option>
+    <!-- CẤP 1: NHÓM NGÀNH HÀNG -->
+    <select id="categorySelect" onchange="onCategoryChange()">
+      <option value="">Cấp 1: Tất cả Nhóm NH</option>
     </select>
 
+    <!-- CẤP 2: TÊN PMH (TỰ ĐỘNG THAY ĐỔI THEO CẤP 1) -->
     <select id="pmhSelect" onchange="filterData()">
-      <option value="">Tất cả Tên PMH</option>
+      <option value="">Cấp 2: Tất cả Tên PMH</option>
     </select>
   </div>
 
@@ -119,24 +121,11 @@
         // Chỉ lưu các phiếu chưa qua sử dụng
         allVouchers = (data.data || []).filter(v => !(v.trangThai && v.trangThai.startsWith("Đã dùng")));
 
-        // Đổ danh sách Nhóm hàng
-        const categorySelect = document.getElementById("categorySelect");
-        (data.categories || []).forEach(cat => {
-          const opt = document.createElement("option");
-          opt.value = cat;
-          opt.innerText = cat;
-          categorySelect.appendChild(opt);
-        });
+        // Khởi tạo danh sách Nhóm NH (Cấp 1) từ dữ liệu thực tế
+        populateCategoryOptions();
 
-        // Đổ danh sách Tên PMH từ các phiếu chưa sử dụng
-        const pmhSelect = document.getElementById("pmhSelect");
-        const uniquePmh = [...new Set(allVouchers.map(v => (v.tenPmh || "").trim()).filter(Boolean))].sort();
-        uniquePmh.forEach(pmhName => {
-          const opt = document.createElement("option");
-          opt.value = pmhName;
-          opt.innerText = pmhName;
-          pmhSelect.appendChild(opt);
-        });
+        // Khởi tạo danh sách Tên PMH (Cấp 2) tương ứng
+        updatePmhOptions();
 
         renderList(allVouchers);
       } else {
@@ -145,6 +134,55 @@
     } catch (err) {
       document.getElementById("voucherList").innerHTML = `<div class="empty">Lỗi kết nối dữ liệu: ${err.message}</div>`;
     }
+  }
+
+  // Đổ danh sách Nhóm NH vào dropdown Cấp 1
+  function populateCategoryOptions() {
+    const categorySelect = document.getElementById("categorySelect");
+    const uniqueCats = [...new Set(allVouchers.map(v => (v.nhomNh || "").trim()).filter(Boolean))].sort();
+
+    categorySelect.innerHTML = '<option value="">Cấp 1: Tất cả Nhóm NH</option>';
+    uniqueCats.forEach(cat => {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.innerText = cat;
+      categorySelect.appendChild(opt);
+    });
+  }
+
+  // Cập nhật danh sách Tên PMH (Cấp 2) phụ thuộc vào Cấp 1
+  function updatePmhOptions() {
+    const selectedCat = document.getElementById("categorySelect").value;
+    const pmhSelect = document.getElementById("pmhSelect");
+    const currentSelectedPmh = pmhSelect.value;
+
+    // Lọc các voucher thuộc Cấp 1 đang chọn (nếu chọn tất cả thì lấy toàn bộ)
+    const availableVouchers = selectedCat 
+      ? allVouchers.filter(v => (v.nhomNh || "").trim() === selectedCat)
+      : allVouchers;
+
+    const uniquePmh = [...new Set(availableVouchers.map(v => (v.tenPmh || "").trim()).filter(Boolean))].sort();
+
+    pmhSelect.innerHTML = '<option value="">Cấp 2: Tất cả Tên PMH</option>';
+    uniquePmh.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.innerText = name;
+      pmhSelect.appendChild(opt);
+    });
+
+    // Nếu Tên PMH trước đó vẫn thuộc nhóm hàng mới thì giữ nguyên lựa chọn
+    if (uniquePmh.includes(currentSelectedPmh)) {
+      pmhSelect.value = currentSelectedPmh;
+    } else {
+      pmhSelect.value = "";
+    }
+  }
+
+  // Xử lý sự kiện khi thay đổi Cấp 1: Nhóm NH
+  function onCategoryChange() {
+    updatePmhOptions();
+    filterData();
   }
 
   function renderList(list) {
@@ -190,10 +228,12 @@
     const pmh = document.getElementById("pmhSelect").value;
 
     const filtered = allVouchers.filter(item => {
-      const matchSearch = item.tenPmh.toLowerCase().includes(search) || 
-                          item.codePmh.toLowerCase().includes(search);
-      const matchCat = cat === "" || item.nhomNh === cat;
-      const matchPmh = pmh === "" || (item.tenPmh && item.tenPmh.trim() === pmh);
+      const itemTitle = (item.tenPmh || "").toLowerCase();
+      const itemCode = (item.codePmh || "").toLowerCase();
+
+      const matchSearch = itemTitle.includes(search) || itemCode.includes(search);
+      const matchCat = cat === "" || (item.nhomNh || "").trim() === cat;
+      const matchPmh = pmh === "" || (item.tenPmh || "").trim() === pmh;
 
       return matchSearch && matchCat && matchPmh;
     });
@@ -234,6 +274,8 @@
       if (result.success) {
         // Xóa phiếu đã dùng khỏi mảng hiển thị
         allVouchers = allVouchers.filter(v => v.codePmh !== code);
+        // Cập nhật lại dropdown Cấp 2 và danh sách hiển thị
+        updatePmhOptions();
         filterData();
       } else {
         alert("Lỗi: " + result.message);
