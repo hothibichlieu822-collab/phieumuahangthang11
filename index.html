@@ -24,35 +24,15 @@
     .subtitle { font-size: 14px; color: var(--text-muted); }
 
     /* Thanh tìm kiếm và bộ lọc dropdown */
-    .controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
+    .controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
     @media (min-width: 640px) {
-      .controls { grid-template-columns: 1fr 1fr; }
-    }
-    @media (min-width: 860px) {
-      .controls { grid-template-columns: 1.5fr 1fr 1fr 1fr; }
+      .controls { grid-template-columns: 1.6fr 1fr 1.2fr; }
     }
     input, select {
       width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px;
       font-size: 14px; outline: none; background: #fff; text-overflow: ellipsis;
     }
     input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(2,132,199,0.2); }
-
-    /* Thanh nút bấm nhanh phân khúc (Quick Chips) */
-    .chips-label { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; }
-    .chips-scroll {
-      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px;
-      scrollbar-width: none; -ms-overflow-style: none;
-    }
-    .chips-scroll::-webkit-scrollbar { display: none; }
-    .chip {
-      white-space: nowrap; padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
-      background: #e2e8f0; color: #334155; border: 1px solid transparent; cursor: pointer; transition: 0.15s;
-    }
-    .chip:hover { background: #cbd5e1; }
-    .chip.active { background: var(--primary); color: #fff; font-weight: 600; }
-
-    .filter-options { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; color: var(--text-muted); }
-    .filter-options input { width: auto; cursor: pointer; }
 
     .counter { font-size: 14px; color: var(--text-muted); margin-bottom: 14px; font-weight: 500; }
     .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
@@ -66,18 +46,14 @@
       display: flex; flex-direction: column; justify-content: space-between;
       transition: all 0.2s ease;
     }
-    .card.is-used { opacity: 0.65; background: #f8fafc; border-color: #cbd5e1; }
 
     .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-    .badge-group { display: flex; gap: 6px; flex-wrap: wrap; }
     .badge {
       display: inline-block; padding: 3px 8px; border-radius: 999px;
       background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 600;
     }
-    .badge-segment { background: #fef3c7; color: #92400e; }
     .status-pill { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
     .status-unused { background: #dcfce7; color: #15803d; }
-    .status-used { background: #fee2e2; color: var(--danger); }
 
     .title { font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 8px; color: #0f172a; }
     .expiry { font-size: 13px; color: #d97706; margin-bottom: 14px; font-weight: 500; }
@@ -110,7 +86,7 @@
 <div class="container">
   <header>
     <h1>Phiếu Mua Hàng - ĐM Tân Túc (939)</h1>
-    <div class="subtitle">Tra cứu nhanh theo phân khúc giá và lấy mã PMH tháng 11</div>
+    <div class="subtitle">Tra cứu nhanh và lấy mã PMH khả dụng tháng 11</div>
   </header>
 
   <!-- BỘ LỌC CHÍNH -->
@@ -121,36 +97,9 @@
       <option value="">Tất cả nhóm hàng</option>
     </select>
 
-    <!-- BỘ LỌC THEO TÊN PMH MỚI THÊM -->
     <select id="pmhSelect" onchange="filterData()">
       <option value="">Tất cả Tên PMH</option>
     </select>
-
-    <select id="segmentSelect" onchange="syncChipAndFilter(this.value)">
-      <option value="">Tất cả phân khúc</option>
-      <option value="Dưới 5 triệu">Dưới 5 triệu</option>
-      <option value="5 - 10 triệu">5 đến dưới 10 triệu</option>
-      <option value="10 triệu trở lên">Từ 10 triệu trở lên</option>
-      <option value="20 - 30 triệu">Từ 20 đến 30 triệu</option>
-      <option value="Xiaomi Redmi">Dòng Xiaomi Redmi</option>
-    </select>
-  </div>
-
-  <!-- PHÍM CHỌN NHANH 1-CHẠM TRÊN ĐIỆN THOẠI -->
-  <div class="chips-label">Chọn nhanh phân khúc giá máy:</div>
-  <div class="chips-scroll" id="chipsGroup">
-    <button class="chip active" onclick="selectChip('', this)">Tất cả</button>
-    <button class="chip" onclick="selectChip('Dưới 5 triệu', this)">&lt; 5 Triệu</button>
-    <button class="chip" onclick="selectChip('5 - 10 triệu', this)">5 - 10 Triệu</button>
-    <button class="chip" onclick="selectChip('10 triệu trở lên', this)">&ge; 10 Triệu</button>
-    <button class="chip" onclick="selectChip('20 - 30 triệu', this)">20 - 30 Triệu</button>
-    <button class="chip" onclick="selectChip('Xiaomi Redmi', this)">Redmi Note 17</button>
-  </div>
-
-  <div class="filter-options">
-    <label>
-      <input type="checkbox" id="hideUsedCheckbox" onchange="filterData()"> Chỉ hiển thị phiếu chưa sử dụng
-    </label>
   </div>
 
   <div class="counter" id="counter">Đang tải danh sách phiếu...</div>
@@ -161,38 +110,25 @@
   const API_URL = "https://script.google.com/macros/s/AKfycbzmgBrNjBP-xgMMrLocG7bqCGOV5BYLuq4akMgPQa5e9cBsCOfyMn0wE4ptjhaPWiE6/exec";
   let allVouchers = [];
 
-  // Hàm tự động nhận diện phân khúc từ tên phiếu mua hàng
-  function detectSegment(title) {
-    const t = (title || "").toLowerCase();
-    if (t.includes("dưới 5 triệu") || t.includes("dưới 5tr")) return "Dưới 5 triệu";
-    if (t.includes("5 đến dưới 10") || t.includes("5 triệu đến 10") || t.includes("5-10")) return "5 - 10 triệu";
-    if (t.includes("20 triệu đến 30") || t.includes("20-30")) return "20 - 30 triệu";
-    if (t.includes("10 triệu trở lên") || t.includes("từ 10 triệu")) return "10 triệu trở lên";
-    if (t.includes("xiaomi redmi") || t.includes("redmi note")) return "Xiaomi Redmi";
-    return "Phổ thông";
-  }
-
   async function loadData() {
     try {
       const res = await fetch(API_URL);
       const data = await res.json();
 
       if (data.success) {
-        allVouchers = data.data.map(v => ({
-          ...v,
-          phanKhuc: detectSegment(v.tenPmh)
-        }));
+        // Chỉ lưu các phiếu chưa qua sử dụng
+        allVouchers = (data.data || []).filter(v => !(v.trangThai && v.trangThai.startsWith("Đã dùng")));
 
-        // Đổ danh sách Nhóm hàng vào dropdown
+        // Đổ danh sách Nhóm hàng
         const categorySelect = document.getElementById("categorySelect");
-        data.categories.forEach(cat => {
+        (data.categories || []).forEach(cat => {
           const opt = document.createElement("option");
           opt.value = cat;
           opt.innerText = cat;
           categorySelect.appendChild(opt);
         });
 
-        // Tự động trích xuất các Tên PMH duy nhất và đổ vào dropdown
+        // Đổ danh sách Tên PMH từ các phiếu chưa sử dụng
         const pmhSelect = document.getElementById("pmhSelect");
         const uniquePmh = [...new Set(allVouchers.map(v => (v.tenPmh || "").trim()).filter(Boolean))].sort();
         uniquePmh.forEach(pmhName => {
@@ -215,7 +151,7 @@
     const container = document.getElementById("voucherList");
     const counter = document.getElementById("counter");
 
-    counter.innerText = `Tìm thấy ${list.length} phiếu mua hàng phù hợp`;
+    counter.innerText = `Tìm thấy ${list.length} phiếu mua hàng khả dụng`;
 
     if (list.length === 0) {
       container.className = "";
@@ -224,82 +160,45 @@
     }
 
     container.className = "grid";
-    container.innerHTML = list.map(item => {
-      const isUsed = item.trangThai && item.trangThai.startsWith("Đã dùng");
-      return `
-        <div class="card ${isUsed ? 'is-used' : ''}">
-          <div>
-            <div class="card-top">
-              <div class="badge-group">
-                <span class="badge">${item.nhomNh}</span>
-                <span class="badge badge-segment">${item.phanKhuc}</span>
-              </div>
-              <span class="status-pill ${isUsed ? 'status-used' : 'status-unused'}">
-                ${item.trangThai || 'Chưa sử dụng'}
-              </span>
-            </div>
-            <div class="title">${item.tenPmh}</div>
-            <div class="expiry">Hạn dùng: ${item.hsd}</div>
+    container.innerHTML = list.map(item => `
+      <div class="card">
+        <div>
+          <div class="card-top">
+            <span class="badge">${item.nhomNh}</span>
+            <span class="status-pill status-unused">Chưa sử dụng</span>
           </div>
+          <div class="title">${item.tenPmh}</div>
+          <div class="expiry">Hạn dùng: ${item.hsd}</div>
+        </div>
 
-          <div>
-            <div class="code-row">
-              <span class="code-text">${item.codePmh}</span>
-            </div>
-            <div class="actions">
-              <button class="btn-copy" onclick="copyCode('${item.codePmh}', this)">Sao chép</button>
-              <button 
-                class="btn-use" 
-                onclick="markAsUsed('${item.codePmh}', this)" 
-                ${isUsed ? 'disabled' : ''}>
-                ${isUsed ? 'Đã dùng' : 'Đã dùng'}
-              </button>
-            </div>
+        <div>
+          <div class="code-row">
+            <span class="code-text">${item.codePmh}</span>
+          </div>
+          <div class="actions">
+            <button class="btn-copy" onclick="copyCode('${item.codePmh}', this)">Sao chép</button>
+            <button class="btn-use" onclick="markAsUsed('${item.codePmh}', this)">Đã dùng</button>
           </div>
         </div>
-      `;
-    }).join("");
+      </div>
+    `).join("");
   }
 
   function filterData() {
     const search = document.getElementById("searchInput").value.toLowerCase().trim();
     const cat = document.getElementById("categorySelect").value;
     const pmh = document.getElementById("pmhSelect").value;
-    const seg = document.getElementById("segmentSelect").value;
-    const hideUsed = document.getElementById("hideUsedCheckbox").checked;
 
     const filtered = allVouchers.filter(item => {
       const matchSearch = item.tenPmh.toLowerCase().includes(search) || 
                           item.codePmh.toLowerCase().includes(search);
       const matchCat = cat === "" || item.nhomNh === cat;
       const matchPmh = pmh === "" || (item.tenPmh && item.tenPmh.trim() === pmh);
-      const matchSeg = seg === "" || item.phanKhuc === seg;
-      const isUsed = item.trangThai && item.trangThai.startsWith("Đã dùng");
-      const matchStatus = !hideUsed || !isUsed;
 
-      return matchSearch && matchCat && matchPmh && matchSeg && matchStatus;
+      return matchSearch && matchCat && matchPmh;
     });
 
     renderList(filtered);
-  }
-
-  // Đồng bộ giữa Dropdown và thanh Chip bấm nhanh
-  function selectChip(segmentValue, chipElement) {
-    document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-    chipElement.classList.add("active");
-    document.getElementById("segmentSelect").value = segmentValue;
-    filterData();
-  }
-
-  function syncChipAndFilter(segmentValue) {
-    document.querySelectorAll(".chip").forEach(c => {
-      if (c.getAttribute("onclick").includes(`'${segmentValue}'`)) {
-        c.classList.add("active");
-      } else {
-        c.classList.remove("active");
-      }
-    });
-    filterData();
   }
 
   function copyCode(code, btn) {
@@ -315,7 +214,7 @@
   }
 
   async function markAsUsed(code, btn) {
-    if (!confirm(`Xác nhận đánh dấu mã phiếu "${code}" đã sử dụng?`)) {
+    if (!confirm(`Xác nhận đánh dấu mã phiếu "${code}" đã sử dụng? Phiếu sẽ được ẩn khỏi danh sách.`)) {
       return;
     }
 
@@ -333,8 +232,8 @@
       const result = await res.json();
 
       if (result.success) {
-        const item = allVouchers.find(v => v.codePmh === code);
-        if (item) item.trangThai = result.trangThai;
+        // Xóa phiếu đã dùng khỏi mảng hiển thị
+        allVouchers = allVouchers.filter(v => v.codePmh !== code);
         filterData();
       } else {
         alert("Lỗi: " + result.message);
