@@ -26,11 +26,14 @@
     /* Thanh tìm kiếm và bộ lọc dropdown */
     .controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
     @media (min-width: 640px) {
-      .controls { grid-template-columns: 2fr 1fr 1fr; }
+      .controls { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 860px) {
+      .controls { grid-template-columns: 1.5fr 1fr 1fr 1fr; }
     }
     input, select {
       width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px;
-      font-size: 14px; outline: none; background: #fff;
+      font-size: 14px; outline: none; background: #fff; text-overflow: ellipsis;
     }
     input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(2,132,199,0.2); }
 
@@ -118,6 +121,11 @@
       <option value="">Tất cả nhóm hàng</option>
     </select>
 
+    <!-- BỘ LỌC THEO TÊN PMH MỚI THÊM -->
+    <select id="pmhSelect" onchange="filterData()">
+      <option value="">Tất cả Tên PMH</option>
+    </select>
+
     <select id="segmentSelect" onchange="syncChipAndFilter(this.value)">
       <option value="">Tất cả phân khúc</option>
       <option value="Dưới 5 triệu">Dưới 5 triệu</option>
@@ -150,7 +158,6 @@
 </div>
 
 <script>
-  // Dán URL Web App của bạn vào đây:
   const API_URL = "https://script.google.com/macros/s/AKfycbzmgBrNjBP-xgMMrLocG7bqCGOV5BYLuq4akMgPQa5e9cBsCOfyMn0wE4ptjhaPWiE6/exec";
   let allVouchers = [];
 
@@ -171,18 +178,28 @@
       const data = await res.json();
 
       if (data.success) {
-        // Gán phân khúc tự động cho từng phiếu
         allVouchers = data.data.map(v => ({
           ...v,
           phanKhuc: detectSegment(v.tenPmh)
         }));
 
-        const select = document.getElementById("categorySelect");
+        // Đổ danh sách Nhóm hàng vào dropdown
+        const categorySelect = document.getElementById("categorySelect");
         data.categories.forEach(cat => {
           const opt = document.createElement("option");
           opt.value = cat;
           opt.innerText = cat;
-          select.appendChild(opt);
+          categorySelect.appendChild(opt);
+        });
+
+        // Tự động trích xuất các Tên PMH duy nhất và đổ vào dropdown
+        const pmhSelect = document.getElementById("pmhSelect");
+        const uniquePmh = [...new Set(allVouchers.map(v => (v.tenPmh || "").trim()).filter(Boolean))].sort();
+        uniquePmh.forEach(pmhName => {
+          const opt = document.createElement("option");
+          opt.value = pmhName;
+          opt.innerText = pmhName;
+          pmhSelect.appendChild(opt);
         });
 
         renderList(allVouchers);
@@ -247,6 +264,7 @@
   function filterData() {
     const search = document.getElementById("searchInput").value.toLowerCase().trim();
     const cat = document.getElementById("categorySelect").value;
+    const pmh = document.getElementById("pmhSelect").value;
     const seg = document.getElementById("segmentSelect").value;
     const hideUsed = document.getElementById("hideUsedCheckbox").checked;
 
@@ -254,11 +272,12 @@
       const matchSearch = item.tenPmh.toLowerCase().includes(search) || 
                           item.codePmh.toLowerCase().includes(search);
       const matchCat = cat === "" || item.nhomNh === cat;
+      const matchPmh = pmh === "" || (item.tenPmh && item.tenPmh.trim() === pmh);
       const matchSeg = seg === "" || item.phanKhuc === seg;
       const isUsed = item.trangThai && item.trangThai.startsWith("Đã dùng");
       const matchStatus = !hideUsed || !isUsed;
 
-      return matchSearch && matchCat && matchSeg && matchStatus;
+      return matchSearch && matchCat && matchPmh && matchSeg && matchStatus;
     });
 
     renderList(filtered);
