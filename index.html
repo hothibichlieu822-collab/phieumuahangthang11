@@ -14,7 +14,6 @@
       --text-muted: #64748b;
       --success: #16a34a;
       --danger: #dc2626;
-      --warning: #d97706;
       --gray: #94a3b8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -106,9 +105,7 @@
       cursor: pointer;
       transition: background 0.15s;
     }
-    table.summary-table tbody tr:hover {
-      background: #f0f9ff;
-    }
+    table.summary-table tbody tr:hover { background: #f0f9ff; }
     table.summary-table tbody tr.active-row {
       background: #e0f2fe;
       font-weight: 600;
@@ -165,7 +162,26 @@
     }
     input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(2,132,199,0.2); }
 
-    .counter { font-size: 14px; color: var(--text-muted); margin-bottom: 14px; font-weight: 500; }
+    .counter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      gap: 10px;
+    }
+    .counter { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+    .refresh-btn {
+      background: #e2e8f0;
+      color: #334155;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .refresh-btn:hover { background: #cbd5e1; }
+
     .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
     @media (min-width: 640px) {
       .grid { grid-template-columns: repeat(2, 1fr); }
@@ -209,7 +225,17 @@
     .btn-use:hover { background: #fca5a5; }
     .btn-use:disabled { background: #e2e8f0; color: var(--gray); border-color: #cbd5e1; cursor: not-allowed; }
 
-    .loading, .empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 15px; }
+    .loading, .empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 15px; }
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      padding: 16px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -250,7 +276,7 @@
       </table>
     </div>
     <div class="summary-hint" id="summaryHint">
-      💡 Chạm vào một dòng <strong>Tên PMH</strong> bất kỳ để lọc nhanh danh sách mã phiếu bên dưới (chạm lại lần nữa để bỏ lọc).
+      Chạm vào một dòng <strong>Tên PMH</strong> bất kỳ để lọc nhanh danh sách mã phiếu bên dưới (chạm lại lần nữa để bỏ lọc).
     </div>
   </div>
 
@@ -258,18 +284,20 @@
   <div class="controls">
     <input type="text" id="searchInput" placeholder="Tìm theo tên máy, mã phiếu..." oninput="filterData()">
     
-    <!-- CẤP 1: NHÓM NGÀNH HÀNG -->
     <select id="categorySelect" onchange="onCategoryChange()">
       <option value="">Cấp 1: Tất cả Nhóm NH</option>
     </select>
 
-    <!-- CẤP 2: TÊN PMH (TỰ ĐỘNG THAY ĐỔI THEO CẤP 1) -->
     <select id="pmhSelect" onchange="filterData()">
       <option value="">Cấp 2: Tất cả Tên PMH</option>
     </select>
   </div>
 
-  <div class="counter" id="counter">Đang tải danh sách phiếu...</div>
+  <div class="counter-bar">
+    <div class="counter" id="counter">Đang tải danh sách phiếu...</div>
+    <button type="button" class="refresh-btn" onclick="loadData()">Làm mới</button>
+  </div>
+
   <div id="voucherList" class="loading">Đang kết nối Google Sheets...</div>
 </div>
 
@@ -277,39 +305,79 @@
   const API_URL = "https://script.google.com/macros/s/AKfycbzmgBrNjBP-xgMMrLocG7bqCGOV5BYLuq4akMgPQa5e9cBsCOfyMn0wE4ptjhaPWiE6/exec";
   let allVouchers = [];
 
+  // Hiển thị thông báo nếu có lỗi JS bất ngờ trên điện thoại
+  window.onerror = function(msg, url, line) {
+    const listEl = document.getElementById("voucherList");
+    if (listEl) {
+      listEl.className = "";
+      listEl.innerHTML = '<div class="error-box">Lỗi mã nguồn dòng ' + line + ': ' + msg + '</div>';
+    }
+  };
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   async function loadData() {
+    const listEl = document.getElementById("voucherList");
+    const counterEl = document.getElementById("counter");
+    listEl.className = "loading";
+    listEl.innerText = "Đang kết nối Google Sheets...";
+    counterEl.innerText = "Đang tải danh sách phiếu...";
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
-      const res = await fetch(API_URL);
-      const data = await res.json();
+      const fetchUrl = API_URL + (API_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+      const res = await fetch(fetchUrl, {
+        method: "GET",
+        redirect: "follow",
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
 
-      if (data.success) {
-        // Chỉ lưu các phiếu chưa qua sử dụng
-        allVouchers = (data.data || []).filter(v => !(v.trangThai && v.trangThai.startsWith("Đã dùng")));
+      const rawText = await res.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr) {
+        throw new Error("Apps Script trả về dữ liệu không hợp lệ (kiểm tra lại quyền truy cập 'Anyone' khi Deploy).");
+      }
 
-        // Hiển thị hộp thống kê
+      if (data && data.success) {
+        allVouchers = (data.data || []).filter(function(v) {
+          return !(v.trangThai && String(v.trangThai).startsWith("Đã dùng"));
+        });
+
         document.getElementById("summaryBox").style.display = "block";
-
-        // Khởi tạo danh sách Nhóm NH (Cấp 1)
         populateCategoryOptions();
-
-        // Khởi tạo danh sách Tên PMH (Cấp 2)
         updatePmhOptions();
-
-        // Vẽ bảng thống kê và danh sách phiếu
         filterData();
       } else {
-        document.getElementById("voucherList").innerHTML = `<div class="empty">\${data.message}</div>`;
+        listEl.className = "";
+        listEl.innerHTML = '<div class="error-box">' + escapeHtml((data && data.message) || "Không lấy được dữ liệu.") + '</div>';
       }
     } catch (err) {
-      document.getElementById("voucherList").innerHTML = `<div class="empty">Lỗi kết nối dữ liệu: \${err.message}</div>`;
+      clearTimeout(timeoutId);
+      const errMsg = err.name === "AbortError"
+        ? "Kết nối tới Google Sheets quá thời gian (15 giây). Vui lòng kiểm tra mạng và bấm Làm mới."
+        : "Lỗi kết nối dữ liệu: " + err.message;
+      counterEl.innerText = "Lỗi tải dữ liệu";
+      listEl.className = "";
+      listEl.innerHTML = '<div class="error-box">' + escapeHtml(errMsg) + '</div>';
     }
   }
 
-  // Đổ danh sách Nhóm NH vào dropdown Cấp 1
   function populateCategoryOptions() {
     const categorySelect = document.getElementById("categorySelect");
     const currentCat = categorySelect.value;
-    const uniqueCats = [...new Set(allVouchers.map(v => (v.nhomNh || "").trim()).filter(Boolean))].sort();
+    const uniqueCats = [...new Set(allVouchers.map(v => String(v.nhomNh || "").trim()).filter(Boolean))].sort();
 
     categorySelect.innerHTML = '<option value="">Cấp 1: Tất cả Nhóm NH</option>';
     uniqueCats.forEach(cat => {
@@ -324,20 +392,18 @@
     }
   }
 
-  // Cập nhật danh sách Tên PMH (Cấp 2) phụ thuộc vào Cấp 1
   function updatePmhOptions() {
     const selectedCat = document.getElementById("categorySelect").value;
     const pmhSelect = document.getElementById("pmhSelect");
     const currentSelectedPmh = pmhSelect.value;
 
-    const availableVouchers = selectedCat 
-      ? allVouchers.filter(v => (v.nhomNh || "").trim() === selectedCat)
+    const availableVouchers = selectedCat
+      ? allVouchers.filter(v => String(v.nhomNh || "").trim() === selectedCat)
       : allVouchers;
 
-    // Đếm số lượng từng Tên PMH để hiển thị kèm trong dropdown
     const countMap = {};
     availableVouchers.forEach(v => {
-      const name = (v.tenPmh || "").trim();
+      const name = String(v.tenPmh || "").trim();
       if (name) countMap[name] = (countMap[name] || 0) + 1;
     });
 
@@ -347,7 +413,7 @@
     uniquePmh.forEach(name => {
       const opt = document.createElement("option");
       opt.value = name;
-      opt.innerText = `${name} (${countMap[name]})`;
+      opt.innerText = name + " (" + countMap[name] + ")";
       pmhSelect.appendChild(opt);
     });
 
@@ -358,38 +424,10 @@
     }
   }
 
-  // Xử lý sự kiện khi thay đổi Cấp 1: Nhóm NH
   function onCategoryChange() {
     updatePmhOptions();
     filterData();
   }
 
-  // VẼ BẢNG THỐNG KÊ SỐ LƯỢNG CÒN LẠI THEO TÊN PMH
   function renderSummaryTable() {
-    const selectedCat = document.getElementById("categorySelect").value;
-    const selectedPmh = document.getElementById("pmhSelect").value;
-    const tbody = document.getElementById("summaryTableBody");
-
-    // Lọc theo Nhóm NH nếu Cấp 1 đang được chọn
-    const sourceList = selectedCat
-      ? allVouchers.filter(v => (v.nhomNh || "").trim() === selectedCat)
-      : allVouchers;
-
-    // Gom nhóm theo cột Tên PMH
-    const summaryMap = new Map();
-    sourceList.forEach(item => {
-      const tenPmh = (item.tenPmh || "Chưa phân loại").trim();
-      const nhomNh = (item.nhomNh || "Khác").trim();
-      if (!summaryMap.has(tenPmh)) {
-        summaryMap.set(tenPmh, { tenPmh, nhomNh, count: 0 });
-      }
-      summaryMap.get(tenPmh).count += 1;
-    });
-
-    const rows = Array.from(summaryMap.values()).sort((a, b) => a.tenPmh.localeCompare(b.tenPmh, 'vi'));
-    const totalRemaining = rows.reduce((sum, r) => sum + r.count, 0);
-
-    document.getElementById("summaryTotalBadge").innerText = `Tổng: ${totalRemaining} phiếu`; document.getElementById("summaryFooterTotal").innerText = `${totalRemaining} phiếu`;
-
-    if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="col-center" style="color:#64748b; padding
+    const selectedCat = document.getElementBy
